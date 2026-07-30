@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Swaying Flowers — Three.js</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      background: #0e1420;
+    }
+    #app {
+      position: fixed;
+      inset: 0;
+    }
+    .overlay {
+      position: fixed;
+      left: 24px;
+      bottom: 20px;
+      color: rgba(255, 255, 255, 0.85);
+      font-family: Georgia, 'Times New Roman', serif;
+      pointer-events: none;
+      user-select: none;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+    }
+    .overlay h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      font-weight: normal;
+      letter-spacing: 0.12em;
+    }
+    .overlay p {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      opacity: 0.75;
+      font-family: system-ui, sans-serif;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="overlay">
+    <h1>Swaying Flowers</h1>
+    <p>drag to orbit · scroll to zoom · WebGL / Three.js</p>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
