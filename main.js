@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ---------------------------------------------------------------------------
 // Config — species mix modeled on a dense wildflower meadow:
@@ -847,133 +848,50 @@ const butterflies = (() => {
 })();
 
 // ---------------------------------------------------------------------------
-// Cats: three low-poly companions in the central clearing.
-// Built from primitive parts so head and tail can be animated per cat.
+// Companions: three glTF models resting in the central clearing.
+// Loaded async — each is scaled to a target height and dropped on the ground.
 // ---------------------------------------------------------------------------
-const cats = (() => {
-  const mat = (color) => new THREE.MeshLambertMaterial({ color });
-
-  const part = (parent, geometry, material, x, y, z, sx = 1, sy = 1, sz = 1) => {
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, y, z);
-    mesh.scale.set(sx, sy, sz);
-    mesh.castShadow = true;
-    parent.add(mesh);
-    return mesh;
-  };
-
-  const sphere = new THREE.SphereGeometry(1, 14, 12);
-
-  // Shared head: ears, muzzle, eyes, nose — returned as a pivot group.
-  function makeHead({ fur, belly, eye }) {
-    const pivot = new THREE.Group();
-    const furMat = mat(fur);
-    const bellyMat = mat(belly);
-
-    part(pivot, sphere, furMat, 0, 0, 0, 0.1, 0.09, 0.095);          // skull
-    part(pivot, sphere, bellyMat, 0, -0.03, 0.075, 0.05, 0.038, 0.04); // muzzle
-    part(pivot, sphere, mat('#e88a9b'), 0, -0.012, 0.108, 0.013, 0.01, 0.008); // nose
-    for (const s of [-1, 1]) {
-      part(pivot, sphere, mat(eye), s * 0.042, 0.015, 0.078,
-        0.016, 0.02, 0.008);                                          // eyes
-      const ear = part(pivot, new THREE.ConeGeometry(0.035, 0.065, 4),
-        furMat, s * 0.06, 0.088, -0.005);
-      ear.rotation.z = -s * 0.35;
-      part(pivot, new THREE.ConeGeometry(0.018, 0.035, 4), mat('#e8a0ae'),
-        s * 0.058, 0.082, 0.008).rotation.z = -s * 0.35;              // inner ear
-    }
-    return pivot;
-  }
-
-  // Tail: chain of shrinking spheres along an arc, hung off a pivot.
-  function makeTail(furMat, { up = true } = {}) {
-    const pivot = new THREE.Group();
-    const SEGS = 7;
-    for (let i = 0; i < SEGS; i++) {
-      const t = i / (SEGS - 1);
-      const r = 0.03 * (1 - t * 0.45);
-      const x = up ? 0 : t * 0.16;
-      const y = up ? Math.sin(t * 1.9) * 0.22 : 0.01;
-      const z = up ? -t * 0.14 : -Math.sin(t * 2.2) * 0.16;
-      part(pivot, sphere, furMat, x, y, z, r, r, r);
-    }
-    return pivot;
-  }
-
-  function makeCat({ fur, belly, eye, pose }) {
-    const group = new THREE.Group();
-    const furMat = mat(fur);
-    const bellyMat = mat(belly);
-
-    let headPivot, tailPivot, torso;
-
-    if (pose === 'sit') {
-      part(group, sphere, furMat, 0, 0.14, -0.02, 0.17, 0.14, 0.16);  // haunches
-      torso = part(group, sphere, furMat, 0, 0.26, 0.04, 0.13, 0.17, 0.12);
-      part(group, sphere, bellyMat, 0, 0.23, 0.09, 0.08, 0.12, 0.06); // chest patch
-      for (const s of [-1, 1]) {
-        part(group, new THREE.CylinderGeometry(0.028, 0.024, 0.22, 8),
-          furMat, s * 0.05, 0.11, 0.12);
-        part(group, sphere, bellyMat, s * 0.05, 0.02, 0.14,
-          0.035, 0.025, 0.045);                                       // white paws
-      }
-      headPivot = makeHead({ fur, belly, eye });
-      headPivot.position.set(0, 0.43, 0.06);
-      tailPivot = makeTail(furMat, { up: true });
-      tailPivot.position.set(0.1, 0.08, -0.14);
-    } else { // 'loaf'
-      torso = part(group, sphere, furMat, 0, 0.11, 0, 0.17, 0.115, 0.24);
-      for (const s of [-1, 1]) {
-        part(group, sphere, bellyMat, s * 0.055, 0.035, 0.22,
-          0.035, 0.028, 0.05);                                        // tucked paws
-      }
-      headPivot = makeHead({ fur, belly, eye });
-      headPivot.position.set(0, 0.24, 0.18);
-      tailPivot = makeTail(furMat, { up: false });
-      tailPivot.position.set(0.14, 0.05, -0.16);
-    }
-    group.add(headPivot, tailPivot);
-    return { group, headPivot, tailPivot, torso };
-  }
-
+const companions = (() => {
   const SPECS = [
-    { // orange tabby, white chest — sitting
-      fur: '#b06a35', belly: '#f6efe2', eye: '#7a9a3d', pose: 'sit',
-      pos: [1.6, 1.2], rotY: -2.4, scale: 1.5,
-    },
-    { // tuxedo — loafing
-      fur: '#2b2b30', belly: '#f4f4f2', eye: '#d8c94a', pose: 'loaf',
-      pos: [-1.5, 0.9], rotY: 2.0, scale: 1.5,
-    },
-    { // grey and white — sitting
-      fur: '#9a9aa2', belly: '#f4f2ee', eye: '#5f8a4a', pose: 'sit',
-      pos: [0.2, -1.9], rotY: 0.35, scale: 1.4,
-    },
+    { url: './assets/models/cinnamon.glb', pos: [1.6, 1.2], rotY: -2.4, height: 0.9 },
+    { url: './assets/models/ramuses.glb', pos: [-1.5, 0.9], rotY: 2.0, height: 0.9 },
+    { url: './assets/models/saladin.glb', pos: [0.2, -1.9], rotY: 0.35, height: 0.9 },
   ];
 
-  const instances = SPECS.map((spec, i) => {
-    const cat = makeCat(spec);
-    const [x, z] = spec.pos;
-    cat.group.position.set(x, groundHeight(x, z) - 0.01, z);
-    cat.group.rotation.y = spec.rotY;
-    cat.group.scale.setScalar(spec.scale);
-    scene.add(cat.group);
-    return { ...cat, phase: i * 2.1 };
+  const loader = new GLTFLoader();
+  const instances = [];
+
+  SPECS.forEach((spec, i) => {
+    loader.load(spec.url, ({ scene: model }) => {
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      model.scale.setScalar(spec.height / (size.y || 1));
+
+      // Re-measure after scaling to sit the model on origin, centred in x/z.
+      box.setFromObject(model);
+      const centre = box.getCenter(new THREE.Vector3());
+      model.position.set(-centre.x, -box.min.y, -centre.z);
+
+      model.traverse((o) => {
+        if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+      });
+
+      const group = new THREE.Group();
+      group.add(model);
+      const [x, z] = spec.pos;
+      group.position.set(x, groundHeight(x, z) - 0.01, z);
+      group.rotation.y = spec.rotY;
+      scene.add(group);
+      instances.push({ group, baseY: group.position.y, phase: i * 2.1 });
+    });
   });
 
   return {
     update(t) {
-      for (const cat of instances) {
-        // Slow curious head turns with a small tilt
-        cat.headPivot.rotation.y = Math.sin(t * 0.35 + cat.phase) * 0.45;
-        cat.headPivot.rotation.z = Math.sin(t * 0.22 + cat.phase * 1.7) * 0.08;
-        // Tail sway
-        cat.tailPivot.rotation.y = Math.sin(t * 0.9 + cat.phase) * 0.3;
-        cat.tailPivot.rotation.x = Math.sin(t * 0.6 + cat.phase * 1.3) * 0.12;
-        // Breathing
-        const breathe = 1 + Math.sin(t * 1.8 + cat.phase) * 0.015;
-        cat.torso.scale.y = cat.torso.userData.baseY ??= cat.torso.scale.y;
-        cat.torso.scale.y = cat.torso.userData.baseY * breathe;
+      for (const c of instances) {
+        // Idle breathing sway — the models carry no animation clips.
+        c.group.position.y = c.baseY + Math.sin(t * 0.8 + c.phase) * 0.008;
+        c.group.rotation.z = Math.sin(t * 0.5 + c.phase) * 0.008;
       }
     },
   };
@@ -1181,7 +1099,7 @@ renderer.setAnimationLoop(() => {
   const t = clock.getElapsedTime();
   for (const u of timeUniforms) u.uTime.value = t;
   butterflies.update(t);
-  cats.update(t);
+  companions.update(t);
   pollen.update(t);
   soundscape.update(t);
   controls.update();
