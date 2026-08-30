@@ -1,0 +1,10 @@
+{
+  "name": "swaying-flowers",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A WebGL wildflower meadow swaying in the wind, built with Three.js",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000"
+  }
+}

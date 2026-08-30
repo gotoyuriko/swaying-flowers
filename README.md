@@ -1,4 +1,4 @@
-# Swaying Flowers 🌸
+# Meadow 🌸
 
 A WebGL scene built with [Three.js](https://threejs.org/) that renders a dense
 wildflower meadow — cosmos, larkspur spikes, orange blooms, and baby's breath —
@@ -24,6 +24,7 @@ Three.js is loaded from the jsDelivr CDN via an import map — no build step or
 
 - **Drag** — orbit the camera (auto-rotates gently when idle)
 - **Scroll** — zoom in/out
+- **♪ sound off** (bottom right) — toggle the sound
 
 ## How it works
 
@@ -47,3 +48,25 @@ Three.js is loaded from the jsDelivr CDN via an import map — no build step or
   on it), sky-dome shader with gradient + slowly drifting FBM cumulus clouds,
   fog, hemisphere + shadow-casting directional light, ACES tone mapping,
   additive-blended drifting pollen.
+- **Soundscape** — a soft piano loop plus one birdsong every 14-48s at varied
+  pitch and stereo pan. The music loops by crossfade: each copy schedules its
+  own successor on the audio clock and fades in over the 4s tail of the one
+  before, so there is no seam. Level is normalized to a measured RMS on load,
+  so replacing the mp3 needs no retuning. Off by default (browsers block audio
+  until a gesture).
+
+## Credits
+
+| File | Source | License |
+|---|---|---|
+| `ghibli.mp3` | user-supplied ("Studio-Ghibli inspired, soft & whimsical piano") | per its original source |
+| `birdsong.mp3` | ["Birdsong single isolated"](https://freesound.org/people/deleted_user_2104797/sounds/164483/) | CC0 |
+
+`ghibli.mp3` has its 14.28s intro removed, cut to the exact point the piano
+enters, with a 40ms fade-in. Re-encoded rather than stream-copied: `-c copy`
+cuts on a frame boundary and leaves the decoder unprimed, which pops.
+
+## License
+
+Code © 2026 Goto Yuriko. Audio files are credited above and licensed
+separately by their respective sources.

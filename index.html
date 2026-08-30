@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Swaying Flowers — Three.js</title>
+  <title>Meadow</title>
   <style>
     html, body {
       margin: 0;
@@ -39,6 +39,29 @@
       opacity: 0.75;
       font-family: system-ui, sans-serif;
     }
+    .overlay .copyright {
+      margin-top: 6px;
+      opacity: 0.5;
+    }
+    #sound-toggle {
+      position: fixed;
+      right: 24px;
+      bottom: 20px;
+      padding: 7px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.2);
+      color: rgba(255, 255, 255, 0.85);
+      font: 12px/1 system-ui, sans-serif;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+    #sound-toggle:hover,
+    #sound-toggle:focus-visible {
+      background: rgba(0, 0, 0, 0.35);
+      color: #fff;
+    }
   </style>
   <script type="importmap">
     {
@@ -52,9 +75,11 @@
 <body>
   <div id="app"></div>
   <div class="overlay">
-    <h1>Swaying Flowers</h1>
-    <p>drag to orbit · scroll to zoom · WebGL / Three.js</p>
+    <h1>Meadow</h1>
+    <p>drag to orbit · scroll to zoom</p>
+    <p class="copyright">&copy; 2026 Goto Yuriko</p>
   </div>
+  <button id="sound-toggle" aria-pressed="false">♪ sound off</button>
   <script type="module" src="./main.js"></script>
 </body>
 </html>

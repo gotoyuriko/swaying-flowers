@@ -1036,6 +1036,143 @@ const pollen = (() => {
 })();
 
 // ---------------------------------------------------------------------------
+// Soundscape — a soft piano loop with one bird over the top. Continuous
+// ambience beds (recorded wind, meadow, white and brown noise) were tried and
+// abandoned: under a near-still scene a broadband wash reads as noise, because
+// there is no motion for the ear to attribute it to. Music doesn't, since the
+// ear attends to it rather than filtering it. Starts muted: browsers block
+// audio until a gesture, and a page shouldn't make noise uninvited.
+// ---------------------------------------------------------------------------
+const soundscape = (() => {
+  const MUSIC = './assets/audio/ghibli.mp3';
+  const BIRD = './assets/audio/birdsong.mp3';
+  const XFADE = 4; // seconds of overlap at the loop point
+
+  const btn = document.getElementById('sound-toggle');
+  let ctx, master, musicNorm;
+  let birdBuffer = null;
+  let birdOffset = 0;
+  let nextBird = 0;
+  let on = false;
+
+  // Brings the track to a target RMS, so replacing the mp3 needs no retuning.
+  // Sampled, not summed — scanning millions of floats for a level is wasted
+  // work.
+  function rmsGain(buf, target) {
+    const d = buf.getChannelData(0);
+    const step = Math.max(1, Math.floor(d.length / 200000));
+    let sum = 0;
+    let n = 0;
+    for (let i = 0; i < d.length; i += step) {
+      sum += d[i] * d[i];
+      n++;
+    }
+    const rms = Math.sqrt(sum / n);
+    return rms > 1e-6 ? THREE.MathUtils.clamp(target / rms, 0.02, 20) : 1;
+  }
+
+  function load(url) {
+    return fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((b) => ctx.decodeAudioData(b));
+  }
+
+  // One copy fades in across the tail of the one before, so the join is a
+  // crossfade rather than a cut. Each copy schedules its own successor: the
+  // audio clock is sample-accurate, rAF is not and stops in a hidden tab.
+  function scheduleCopy(buf, when) {
+    const dur = buf.duration;
+    const body = Math.max(dur - XFADE, XFADE); // gap between successive starts
+    const s = ctx.createBufferSource();
+    const g = ctx.createGain();
+    s.buffer = buf;
+    s.connect(g).connect(musicNorm);
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(1, when + XFADE);
+    g.gain.setValueAtTime(1, when + body);
+    g.gain.linearRampToValueAtTime(0, when + dur);
+    s.start(when);
+    s.stop(when + dur + 0.1);
+
+    // Hand off early — setTimeout is throttled to ~1s in a background tab, so
+    // the lead has to be generous or the loop drops out.
+    const lead = Math.min(5, body / 2);
+    setTimeout(
+      () => scheduleCopy(buf, when + body),
+      Math.max(0, (when + body - lead - ctx.currentTime) * 1000),
+    );
+  }
+
+  function build() {
+    ctx = new AudioContext();
+    master = ctx.createGain();
+    master.gain.value = 0;
+    master.connect(ctx.destination);
+
+    musicNorm = ctx.createGain();
+    musicNorm.gain.value = 0;
+    musicNorm.connect(master);
+
+    load(MUSIC)
+      .then((buf) => {
+        musicNorm.gain.value = rmsGain(buf, 0.12); // background, not foreground
+        scheduleCopy(buf, ctx.currentTime + 0.05);
+      })
+      .catch(() => {}); // silence is a valid soundscape
+
+    load(BIRD)
+      .then((buf) => {
+        birdBuffer = buf;
+        // The recording is one chirp surrounded by silence — find the onset so
+        // the timer fires a bird rather than a gap.
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) {
+          if (Math.abs(d[i]) > 0.05) {
+            birdOffset = Math.max(0, i / buf.sampleRate - 0.05);
+            break;
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Same recording every time, so vary pitch and position — one bird moving
+  // around the field rather than a loop.
+  function chirp() {
+    if (!birdBuffer) return;
+    const s = ctx.createBufferSource();
+    s.buffer = birdBuffer;
+    s.playbackRate.value = 0.88 + Math.random() * 0.3;
+    const g = ctx.createGain();
+    g.gain.value = 0.22 + Math.random() * 0.2;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    s.connect(g).connect(pan).connect(master);
+    s.start(0, birdOffset);
+  }
+
+  btn.addEventListener('click', () => {
+    if (!ctx) build();
+    ctx.resume();
+    on = !on;
+    master.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.8);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.textContent = on ? '♪ sound on' : '♪ sound off';
+  });
+
+  return {
+    update(t) {
+      if (!on) return;
+      // 間 — one bird, then nothing; sparse enough to sit under the music.
+      if (t > nextBird) {
+        if (nextBird > 0) chirp();
+        nextBird = t + 14 + Math.random() * 34;
+      }
+    },
+  };
+})();
+
+// ---------------------------------------------------------------------------
 // Main loop
 // ---------------------------------------------------------------------------
 const clock = new THREE.Clock();
@@ -1046,6 +1183,7 @@ renderer.setAnimationLoop(() => {
   butterflies.update(t);
   cats.update(t);
   pollen.update(t);
+  soundscape.update(t);
   controls.update();
   renderer.render(scene, camera);
 });
